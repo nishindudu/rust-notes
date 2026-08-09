@@ -1,3 +1,5 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] //Hides console on release builds
+
 use std::path::{PathBuf};
 use std::fmt::Error;
 use iced::{Alignment, Length, Task};
