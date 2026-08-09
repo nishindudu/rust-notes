@@ -1,27 +1,34 @@
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::fmt::Error;
+use iced::{Alignment, Length, Task};
 use iced::{
-    Element, wgpu::naga::compact::KeepUnused::No, widget::{
-        TextEditor, TextInput, column, text, text_editor, text_input
+    Element, 
+    widget::{
+        column, row, text, text_editor, button, mouse_area, container, Space
     },
     Fill,
-    window, Size
+    window, Size,
 };
 
 fn main() -> iced::Result {
-    println!("Hello, world!");
     // iced::run(Note::update, Note::view)
     let settings = window::Settings{
-        size: Size::new(600.0, 600.0),
+        size: Size::new(350.0, 300.0),
         decorations: false,
         ..Default::default()
     };
-    iced::application(Note::new, Note::update, Note::view).window(settings).run()
+    iced::application(Note::new, Note::update, Note::view).window(settings).title("Rust Notes").run()
 }
 
 
 #[derive(Clone)]
 enum Message {
+    RequestDrag,
+    TitleBarDragged(Option<window::Id>),
+    RequestMinimize,
+    MinimizeWindow(Option<window::Id>),
+    RequestClose,
+    CloseWindow(Option<window::Id>),
     NewSession,
     SaveFile,
     FileSaved(Result<PathBuf, Error>),
@@ -31,33 +38,125 @@ enum Message {
 #[derive(Default)]
 struct Note {
     title: String,
-    content: text_editor::Content
+    content: text_editor::Content,
 }
 
 impl Note {
+
     fn new() -> Self {
         Self{
-            title: "".to_string(),
+            title: "Rust Notes".to_string(),
             content: text_editor::Content::new(),
         }
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
-            Message::Edit(action) => self.content.perform(action),
-            Message::FileSaved(result) => println!("Saved! {:?}", result),
-            Message::NewSession => {},
-            Message::SaveFile => {},
+            Message::RequestDrag => {
+                window::latest().map(Message::TitleBarDragged)
+            }
+
+            Message::TitleBarDragged(id) => {
+                match id {
+                    Some(id) => {
+                        return window::drag(id);
+                    }
+                    None => {
+                        println!("Drag failed. (No window id found)");
+                    }
+                }
+                Task::none()
+            }
+
+            Message::RequestClose => {
+                window::latest().map(Message::CloseWindow)
+            }
+
+            Message::CloseWindow(id) => {
+                match id {
+                    Some(id) => {
+                        return window::close(id)
+                    }
+                    None => {
+                        println!("No window");
+                    }
+                }
+                Task::none()
+            }
+
+            Message::RequestMinimize => {
+                window::latest().map(Message::MinimizeWindow)
+                // println!("{:?}", win);
+                // Task::none()
+            }
+
+            Message::MinimizeWindow(id) => {
+                // window::minimize(id.unwrap(), false)
+                match id {
+                    Some(id) => {
+                        return window::minimize(id, true);
+                        // println!("{id}");
+                    }
+                    None => {
+                        println!("No window found!");
+                    }
+                }
+                Task::none()
+            }
+
+            Message::Edit(action) => self.content.perform(action).into(),
+
+            Message::FileSaved(result) => {
+                todo!();
+                //Task::none()
+            }
+
+            Message::NewSession => {
+                todo!();
+                //Task::none()
+            }
+
+            Message::SaveFile => {
+                todo!();
+                //Task::none()
+            }
         }
     }
 
     fn view(&self) -> Element<Message> {
-        // "Hellooo".into()
-        text_editor(&self.content)
+        let title_text = text(&self.title).size(15);
+
+        let window_controls = row![
+            button("-").on_press(Message::RequestMinimize),
+            button("x").on_press(Message::RequestClose),
+        ].spacing(10);
+
+        let title_bar_content = row![
+            title_text,
+            Space::width(Space::new(), Length::Fill),
+            window_controls,
+        ]
+        .width(Length::Fill)
+        .align_y(Alignment::Center);
+
+        let title_bar_custom = mouse_area(
+            container(title_bar_content)
+                .padding(5)
+                .style(container::dark)
+        )
+        .on_press(Message::RequestDrag);
+
+
+        let editor = text_editor(&self.content)
             .id("editor")
             .height(Fill)
             .wrapping(text::Wrapping::Word)
-            .on_action(Message::Edit)
-            .into()
+            .on_action(Message::Edit);
+
+        
+        column![
+            title_bar_custom,
+            editor,
+        ].into()
     }
 }
