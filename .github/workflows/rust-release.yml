@@ -1,0 +1,35 @@
+name: rust
+
+on:
+    workflow_dispatch:
+
+env:
+    CARGO_TERM_COLOR: always
+
+jobs:
+    release:
+        name: Release - ${{ matrix.platform.release_for }}
+        strategy:
+            matrix:
+                platform:
+                    - os_name: Linux-x86-64
+                      os: ubuntu-latest
+                      target: x86_64-unknown-linux-musl
+                    - os_name: Windows-x86-64
+                      os: ubuntu-latest
+                      target: x86_64-pc-windows-gnu
+        runs-on: ${{ matrix.platform.os }}
+        
+        steps:
+            - uses: actions/checkout@v6
+            - name: Build
+              uses: houseabsolute/actions-rust-cross@v1.0.8
+              with:
+                target: ${{ matrix.platform.target }}
+                args: "--locked --release"
+                strip: true
+            - name: Publish
+              uses: houseabsolute/actions-rust-release@v0.0.9
+              with:
+                executable-name: rust-notes
+                target: ${{ matrix.platform.target }}
