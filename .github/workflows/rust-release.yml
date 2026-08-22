@@ -28,8 +28,14 @@ jobs:
                 target: ${{ matrix.platform.target }}
                 args: "--locked --release"
                 strip: true
-            - name: Publish
-              uses: houseabsolute/actions-rust-release@v0.0.9
+            - name: Prepare release binary
+              run: |
+                    mkdir release
+                      cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.binary }} \
+                    release/rust-notes-${{ matrix.platform.os_name }}${{ endsWith(matrix.platform.binary, '.exe') && '.exe' || '' }}
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
               with:
-                executable-name: rust-notes
-                target: ${{ matrix.platform.target }}
+                  name: rust-notes-${{ matrix.platform.os_name }}
+                  path: release/*
